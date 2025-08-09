@@ -11,16 +11,15 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error url.config was not found: {ex.Message}");
+            Log($"Error url.config was not found: {ex.Message}");
             return;
         }
 
         (int seriesCount, int moviesCount) = await DownloadAndParsePlaylist(baseUrl);
 
-        Console.WriteLine();
-        Console.WriteLine("M3U-Datei wurde erfolgreich verarbeitet.");
-        Console.WriteLine($"Gefundene Serien: {seriesCount}");
-        Console.WriteLine($"Gefundene Filme: {moviesCount}");
+        Log("M3U-Datei wurde erfolgreich verarbeitet.");
+        Log($"Gefundene Serien: {seriesCount}");
+        Log($"Gefundene Filme: {moviesCount}");
     }
 
     static async Task<(int seriesCount, int moviesCount)> DownloadAndParsePlaylist(string m3uUrl)
@@ -28,18 +27,18 @@ class Program
         int seriesCount = 0;
         int moviesCount = 0;
 
-        using (HttpClient client = new HttpClient())
+        using (HttpClient client = new HttpClient() { Timeout = Timeout.InfiniteTimeSpan })
         {
             try
             {
-                Console.WriteLine("M3U-Datei wird heruntergeladen.");
+                Log("M3U-Datei wird heruntergeladen.");
                 string playlist = await client.GetStringAsync(m3uUrl);
-                Console.WriteLine("M3U-Datei erfolgreich heruntergeladen.");
+                Log("M3U-Datei erfolgreich heruntergeladen.");
 
-                Console.WriteLine("Lösche alle Ordner!");
+                Log("Lösche alle Ordner!");
                 DeleteAllFolders("Filme");
                 DeleteAllFolders("Serien");
-                Console.WriteLine("Alle Ordner wurden gelöscht!");
+                Log("Alle Ordner wurden gelöscht!");
 
                 string[] lines = playlist.Split('\n');
 
@@ -90,12 +89,16 @@ class Program
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fehler beim Verarbeiten der M3U-Datei: {ex.Message}");
+                Log($"Fehler beim Verarbeiten der M3U-Datei: {ex.Message}");
             }
         }
         return (seriesCount, moviesCount);
     }
 
+    static void Log(string message)
+    {
+        Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
+    }
 
     static string GetTvgNameFromLine(string line, bool clean)
     {
@@ -123,10 +126,8 @@ class Program
 
     static string RemoveInvalidPathChars(string path)
     {
-        // Entferne ┃DE┃ oder ähnliche Tags
         path = Regex.Replace(path, @"┃[A-Z]{2,3}┃\s*", "", RegexOptions.IgnoreCase);
 
-        // Ersetze problematische Zeichen
         path = path.Replace("/", "-")
                    .Replace("\\", "-")
                    .Replace(":", "-")
@@ -137,16 +138,13 @@ class Program
                    .Replace(">", "")
                    .Replace("|", "");
 
-        // Entferne ungültige Zeichen
         char[] invalidChars = Path.GetInvalidFileNameChars();
         path = new string(path.Where(c => !invalidChars.Contains(c)).ToArray());
 
-        // Verhindere Punkt am Ende (Windows erlaubt das nicht)
         path = path.TrimEnd('.');
 
         return path.Trim();
     }
-
 
     static void DeleteAllFolders(string folderName)
     {
